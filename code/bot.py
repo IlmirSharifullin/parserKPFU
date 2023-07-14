@@ -10,7 +10,6 @@ from messages import messages
 import db
 import async_parser
 
-
 dotenv_path = os.path.abspath(__file__)[:-7] + '/../.env'
 if os.path.exists(dotenv_path):
     load_dotenv(dotenv_path)
@@ -18,6 +17,7 @@ if os.path.exists(dotenv_path):
 bot = Bot(os.environ.get('BOT_TOKEN'))
 dp = Dispatcher(bot)
 scheduler = AsyncIOScheduler()
+
 
 @dp.message_handler(commands='all')
 async def all(message: Message):
@@ -107,7 +107,6 @@ async def send_rating(dp: Dispatcher) -> None:
         else:
             print(snils)
     await bot.send_message(901977201, f'Рассылка: Сообщений отправлено {count} пользователям из {len(users)}')
-
 
 
 async def update_ratings() -> None:
