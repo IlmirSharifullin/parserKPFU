@@ -14,7 +14,7 @@ dotenv_path = os.path.abspath(__file__)[:-7] + '/../.env'
 if os.path.exists(dotenv_path):
     load_dotenv(dotenv_path)
 
-bot = Bot(os.environ.get('BOT_TEST_TOKEN'))
+bot = Bot(os.environ.get('BOT_TOKEN'))
 dp = Dispatcher(bot)
 scheduler = AsyncIOScheduler()
 
