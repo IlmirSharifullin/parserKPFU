@@ -30,7 +30,7 @@ def get_url(p_inst=0, p_faculty=47, p_speciality=1416, p_typeofstudy=1, p_catego
 
 async def gather_data():
     async with aiohttp.ClientSession() as session:
-        with open('../../../Desktop/code/data/specialities.json', encoding='utf-8') as f:
+        with open('data/specialities.json', encoding='utf-8') as f:
             res: dict = json.load(f)
         tasks = []
         for institute, info in res.items():
@@ -41,11 +41,6 @@ async def gather_data():
                 tasks.append(task)
 
         await asyncio.gather(*tasks)
-
-
-def save_site(speciality, html_doc) -> None:
-    with open(f'../sites/site_{speciality}.html', 'w', encoding='utf-8') as f:
-        f.write(html_doc)
 
 
 def save_to_json(speciality, html_doc) -> None:
@@ -68,13 +63,15 @@ def save_to_json(speciality, html_doc) -> None:
 
 
 def get_for_snils(snils: str) -> list:
-    with open('../../../Desktop/code/data/specialities.json', encoding='utf-8') as f:
+    with open('data/specialities.json', encoding='utf-8') as f:
         res = json.load(f)
     ans = []
     for institute, info in res.items():
         faculty: int = info['faculty_code']
         profiles: dict = info['profiles']
-        for profile, profile_code in profiles.items():
+        for profile, profile_info in profiles.items():
+            profile_code = profiles[profile]['code']
+            profile_count_places = profiles[profile]['count']
             if os.path.exists(os.path.dirname(__file__) + f'/../jsons/res_{profile_code}.json'):
                 with open(f'../jsons/res_{profile_code}.json') as f:
                     spec: dict = json.load(f)
@@ -103,6 +100,7 @@ def get_for_snils(snils: str) -> list:
                         elif spec[snils]['priority'] == '2':
                             spec[snils]['place2'] = place2
                     spec[snils]['profile'] = f'{institute}.{profile}'
+                    spec[snils]['count_places'] = profile_count_places
                     ans.append(spec[snils])
     return ans
 
@@ -119,16 +117,23 @@ def pretty_results(data: list):
             s += f'Место среди приоритетов `1` и `2`: {row["place2"]}\n'
         if row['priority'] == '2':
             s += f'Место среди приоритетов `1` и `2`: {row["place2"]}\n'
+        if row['count_places']:
+            s += f'Бюджетных мест: {row["count_places"]}\n'
         s += '--------------------\n'
     return s
 
 
-def make_right():
-    users = db.get_users()
-    for user in users:
-        snils = user[2]
-        snils = snils[:11] + '-' + snils[12:]
-        db.change_last_snils(user[1], snils)
+def add_count_places():
+    with open('data/specialities.json', encoding='utf-8') as f:
+        data: dict = json.load(f)
+    for institute, info in data.items():
+        for profile_name, code in info['profiles'].items():
+            info['profiles'][profile_name] = {
+                                   "code": code,
+                                   "count": None
+                               }
+    with open('data/specialities.json', 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
 
 def main():
@@ -137,6 +142,6 @@ def main():
 
 if __name__ == '__main__':
     start_time = time.time()
-    make_right()
+    print(pretty_results(get_for_snils('154-922-757-86')))
     finish_time = time.time() - start_time
     print('Затраченное время: ' + str(finish_time))
