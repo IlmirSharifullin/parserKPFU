@@ -20,7 +20,7 @@ async def get_page(session, p_faculty, p_speciality):
     async with session.get(url=url, headers=headers) as response:
         response_text = await response.text()
         save_site(p_speciality, response_text)
-        save_to_json(p_speciality, response_text)
+        # save_to_json(p_speciality, response_text)
 
 
 def get_url(p_inst=0, p_faculty=47, p_speciality=1416, p_typeofstudy=1, p_category=1):
@@ -159,7 +159,7 @@ def main():
 
 if __name__ == '__main__':
     start_time = time.time()
-    # main()
-    print(pretty_results(get_for_snils('154-922-757-86')))
+    main()
+    # print(pretty_results(get_for_snils('154-922-757-86')))
     finish_time = time.time() - start_time
     print('Затраченное время: ' + str(finish_time))
