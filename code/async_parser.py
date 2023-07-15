@@ -19,7 +19,7 @@ async def get_page(session, p_faculty, p_speciality):
     url = get_url(p_faculty=p_faculty, p_speciality=p_speciality)
     async with session.get(url=url, headers=headers) as response:
         response_text = await response.text()
-        # save_site(p_speciality, response_text)
+        save_site(p_speciality, response_text)
         save_to_json(p_speciality, response_text)
 
 
@@ -36,7 +36,8 @@ async def gather_data():
         for institute, info in res.items():
             faculty: int = info['faculty_code']
             profiles: dict = info['profiles']
-            for profile, profile_code in profiles.items():
+            for profile, profile_info in profiles.items():
+                profile_code = profile_info['code']
                 task = asyncio.create_task(get_page(session, p_faculty=faculty, p_speciality=profile_code))
                 tasks.append(task)
 
@@ -51,12 +52,13 @@ def save_to_json(speciality, html_doc) -> None:
         res = {}
         for index, tr in enumerate(kcp[2:]):
             tds = tr.find('td').find_next_siblings()
-            snils, ege, priority = tds[0].text.strip(), tds[-7].text.strip(), tds[
-                -4].text.strip()
+            snils, ege, priority, original = tds[0].text.strip(), tds[-7].text.strip(), tds[-4].text.strip(), tds[
+                -3].text.strip()
             res[snils] = {
                 'index': index + 1,
                 'priority': priority,
-                'ege': ege
+                'ege': ege,
+                'original': True if original == 'да' else False
             }
         with open(f'../jsons/res_{speciality}.json', 'w') as f:
             json.dump(res, f, ensure_ascii=False, indent=2)
@@ -72,36 +74,44 @@ def get_for_snils(snils: str) -> list:
         for profile, profile_info in profiles.items():
             profile_code = profiles[profile]['code']
             profile_count_places = profiles[profile]['count']
-            if os.path.exists(os.path.dirname(__file__) + f'/../jsons/res_{profile_code}.json'):
-                with open(f'../jsons/res_{profile_code}.json') as f:
-                    spec: dict = json.load(f)
-                if snils in spec.keys():
-                    if spec[snils]['priority'] in ['1', '2']:
-                        count1 = 0
-                        count2 = 0
-                        place1 = 0
-                        place2 = 0
-                        for _snils, inform in spec.items():
-                            if inform['priority'] == '1':
-                                if _snils != snils:
-                                    count1 += 1
-                                    count2 += 1
-                                else:
-                                    place2 = count2 + 1
-                                    place1 = count1 + 1
-                            elif inform['priority'] == '2':
-                                if _snils != snils:
-                                    count2 += 1
-                                else:
-                                    place2 = count2 + 1
-                        if spec[snils]['priority'] == '1':
-                            spec[snils]['place1'] = place1
-                            spec[snils]['place2'] = place2
-                        elif spec[snils]['priority'] == '2':
-                            spec[snils]['place2'] = place2
-                    spec[snils]['profile'] = f'{institute}.{profile}'
-                    spec[snils]['count_places'] = profile_count_places
-                    ans.append(spec[snils])
+            if not os.path.exists(os.path.dirname(__file__) + f'/../jsons/res_{profile_code}.json'):
+                continue
+            with open(f'../jsons/res_{profile_code}.json') as f:
+                spec: dict = json.load(f)
+            if not snils in spec.keys():
+                continue
+            count1 = 0
+            count2 = 0
+            place1 = 0
+            place2 = 0
+            originals_count = 0
+            originals_place = 0
+            for _snils, inform in spec.items():
+                if inform['priority'] == '1':
+                    count1 += 1
+                    count2 += 1
+                    if _snils == snils:
+                        place2 = count2
+                        place1 = count1
+                elif inform['priority'] == '2':
+                    count2 += 1
+                    if _snils == snils:
+                        place2 = count2
+                if inform['original']:
+                    originals_count += 1
+                    if _snils == snils:
+                        originals_place = originals_count
+            if spec[snils]['priority'] == '1':
+                spec[snils]['place1'] = place1
+                spec[snils]['place2'] = place2
+            elif spec[snils]['priority'] == '2':
+                spec[snils]['place2'] = place2
+
+            if spec[snils]['original']:
+                spec[snils]['original_place'] = originals_place
+            spec[snils]['profile'] = f'{institute}.{profile}'
+            spec[snils]['count_places'] = profile_count_places
+            ans.append(spec[snils])
     return ans
 
 
@@ -112,6 +122,8 @@ def pretty_results(data: list):
         s += f'Приоритет: {row["priority"]}\n'
         s += f'Профиль: {row["profile"]}\n'
         s += f'Место в списке: {row["index"]}\n'
+        if row['original']:
+            s += f'Место по оригиналам: {row["original_place"]}\n'
         if row['priority'] == '1':
             s += f'Место среди приоритетов `1`: {row["place1"]}\n'
             s += f'Место среди приоритетов `1` и `2`: {row["place2"]}\n'
@@ -136,12 +148,18 @@ def add_count_places():
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
+def save_site(speciality, html_doc) -> None:
+    with open(f'../sites/site_{speciality}.html', 'w', encoding='utf-8') as f:
+        f.write(html_doc)
+
+
 def main():
     asyncio.run(gather_data())
 
 
 if __name__ == '__main__':
     start_time = time.time()
+    # main()
     print(pretty_results(get_for_snils('154-922-757-86')))
     finish_time = time.time() - start_time
     print('Затраченное время: ' + str(finish_time))
