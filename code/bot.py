@@ -119,7 +119,6 @@ async def update_ratings() -> None:
         await async_parser.gather_data()
     except Exception as ex:
         print(ex)
-    await bot.send_message(901977201, 'Рейтинги обновлены')
 
 
 if __name__ == '__main__':
