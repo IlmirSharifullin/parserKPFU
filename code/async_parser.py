@@ -1,10 +1,7 @@
 import json
 import os
-import random
 import time
-import db
 
-import requests
 from bs4 import BeautifulSoup
 
 from fake_useragent import UserAgent
@@ -19,8 +16,8 @@ async def get_page(session, p_faculty, p_speciality):
     url = get_url(p_faculty=p_faculty, p_speciality=p_speciality)
     async with session.get(url=url, headers=headers) as response:
         response_text = await response.text()
-        save_site(p_speciality, response_text)
-        # save_to_json(p_speciality, response_text)
+        # save_site(p_speciality, response_text)
+        save_to_json(p_speciality, response_text)
 
 
 def get_url(p_inst=0, p_faculty=47, p_speciality=1416, p_typeofstudy=1, p_category=1):
@@ -45,6 +42,10 @@ async def gather_data():
 
 
 def save_to_json(speciality, html_doc) -> None:
+    """
+    speciality: код специальности
+    html_doc: спаршенная страница списков этой специальности
+    """
     soup = BeautifulSoup(html_doc, 'html.parser')
     kcp = soup.find(id='t_common')
     if kcp:
@@ -68,9 +69,8 @@ def get_for_snils(snils: str) -> list:
     with open('data/specialities.json', encoding='utf-8') as f:
         res = json.load(f)
     ans = []
-    for institute, info in res.items():
-        faculty: int = info['faculty_code']
-        profiles: dict = info['profiles']
+    for institute, institute_info in res.items():
+        profiles: dict = institute_info['profiles']
         for profile, profile_info in profiles.items():
             profile_code = profiles[profile]['code']
             profile_count_places = profiles[profile]['count']
@@ -78,8 +78,9 @@ def get_for_snils(snils: str) -> list:
                 continue
             with open(f'../jsons/res_{profile_code}.json') as f:
                 spec: dict = json.load(f)
-            if not snils in spec.keys():
+            if snils not in spec.keys():
                 continue
+            person_info = spec[snils]
             count1 = 0
             count2 = 0
             place1 = 0
@@ -90,28 +91,21 @@ def get_for_snils(snils: str) -> list:
                 if inform['priority'] == '1':
                     count1 += 1
                     count2 += 1
-                    if _snils == snils:
-                        place2 = count2
-                        place1 = count1
                 elif inform['priority'] == '2':
                     count2 += 1
-                    if _snils == snils:
-                        place2 = count2
+
                 if inform['original']:
                     originals_count += 1
-                    if _snils == snils:
-                        originals_place = originals_count
-            if spec[snils]['priority'] == '1':
-                spec[snils]['place1'] = place1
-                spec[snils]['place2'] = place2
-            elif spec[snils]['priority'] == '2':
-                spec[snils]['place2'] = place2
-
-            if spec[snils]['original']:
-                spec[snils]['original_place'] = originals_place
-            spec[snils]['profile'] = f'{institute}.{profile}'
-            spec[snils]['count_places'] = profile_count_places
-            ans.append(spec[snils])
+                if _snils == snils:
+                    place2 = count2
+                    place1 = count1
+                    originals_place = originals_count
+            person_info['place1'] = place1
+            person_info['place2'] = place2
+            person_info['original_place'] = originals_place
+            person_info['profile'] = f'{institute}.{profile}'
+            person_info['count_places'] = profile_count_places
+            ans.append(person_info)
     return ans
 
 
@@ -122,35 +116,13 @@ def pretty_results(data: list):
         s += f'Приоритет: {row["priority"]}\n'
         s += f'Профиль: {row["profile"]}\n'
         s += f'Место в списке: {row["index"]}\n'
-        if row['original']:
-            s += f'Место по оригиналам: {row["original_place"]}\n'
-        if row['priority'] == '1':
-            s += f'Место среди приоритетов `1`: {row["place1"]}\n'
-            s += f'Место среди приоритетов `1` и `2`: {row["place2"]}\n'
-        if row['priority'] == '2':
-            s += f'Место среди приоритетов `1` и `2`: {row["place2"]}\n'
+        s += f'Место по оригиналам: {row["original_place"]}\n'
+        s += f'Место среди приоритетов `1`: {row["place1"]}\n'
+        s += f'Место среди приоритетов `1` и `2`: {row["place2"]}\n'
         if row['count_places']:
             s += f'Бюджетных мест: {row["count_places"]}\n'
         s += '--------------------\n'
     return s
-
-
-def add_count_places():
-    with open('data/specialities.json', encoding='utf-8') as f:
-        data: dict = json.load(f)
-    for institute, info in data.items():
-        for profile_name, code in info['profiles'].items():
-            info['profiles'][profile_name] = {
-                                   "code": code,
-                                   "count": None
-                               }
-    with open('data/specialities.json', 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-
-def save_site(speciality, html_doc) -> None:
-    with open(f'../sites/site_{speciality}.html', 'w', encoding='utf-8') as f:
-        f.write(html_doc)
 
 
 def main():

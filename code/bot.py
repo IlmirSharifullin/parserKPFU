@@ -7,7 +7,7 @@ from fnmatch import fnmatch
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from messages import messages
-import db
+from db import Database
 import async_parser
 
 dotenv_path = os.path.abspath(__file__)[:-7] + '/../.env'
@@ -17,10 +17,11 @@ if os.path.exists(dotenv_path):
 bot = Bot(os.environ.get('BOT_TOKEN'))
 dp = Dispatcher(bot)
 scheduler = AsyncIOScheduler()
+db = Database('users.db')
 
 
 @dp.message_handler(commands='all')
-async def all(message: Message):
+async def get_all(message: Message):
     uid = message.from_user.id
     if uid == 901977201:
         users = db.get_users()
@@ -38,7 +39,7 @@ async def mailing(message: Message):
             tg_id = user[1]
             try:
                 await bot.send_message(tg_id, msg)
-            except:
+            except Exception:
                 pass
 
 
@@ -66,7 +67,7 @@ async def get_all_messages(message: Message):
     if fnmatch(message.text, '???-???-???-??') or fnmatch(message.text, '???-???-??? ??'):
         # Если отправили СНИЛС
         snils = message.text.strip()
-        snils = snils[:11] + '-' + snils[12:]
+        snils = snils.replace(' ', '-')
         res = async_parser.pretty_results(async_parser.get_for_snils(snils))
         if not res:
             return await bot.send_message(uid, messages['snils_not_found'])
@@ -80,18 +81,16 @@ async def get_all_messages(message: Message):
             await bot.send_message(uid, messages['user_added'])
             count = len(db.get_users())
             await bot.send_message(901977201, str(count))
-        await bot.send_message(uid, res, reply_markup=ReplyKeyboardMarkup([[message.text]], resize_keyboard=True))
+        await bot.send_message(uid, res,
+                               reply_markup=ReplyKeyboardMarkup([[KeyboardButton(snils)]], resize_keyboard=True))
     else:
         await bot.send_message(uid, 'Неправильный СНИЛС, попробуй еще раз!')
 
 
-async def send_rating(dp: Dispatcher) -> None:
+async def send_rating() -> None:
     """
     Рассылка
-    :param dp: диспетчер для отправки сообщений
-    :return: None
     """
-    bot = dp.bot
     users = db.get_users()
     count = 1
     for user in users:
@@ -112,9 +111,7 @@ async def send_rating(dp: Dispatcher) -> None:
 async def update_ratings() -> None:
     """
     Ежечасное обновление рейтингов
-    :return: None
     """
-    bot = dp.bot
     try:
         await async_parser.gather_data()
     except Exception as ex:
@@ -123,8 +120,8 @@ async def update_ratings() -> None:
 
 if __name__ == '__main__':
     # Рассылка
-    scheduler.add_job(send_rating, 'cron', hour='8,14,22', args=(dp,))
-    # scheduler.add_job(send_rating, 'cron', minute='*', args=(dp,)) # Для проверки рассылки
+    scheduler.add_job(send_rating, 'cron', hour='8,14,22')
+    # scheduler.add_job(send_rating, 'cron', minute='*') # Для проверки рассылки
 
     # Обновление рейтингов
     scheduler.add_job(update_ratings, 'cron', hour='*', minute=30)

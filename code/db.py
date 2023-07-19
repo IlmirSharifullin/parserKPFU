@@ -1,28 +1,27 @@
 import sqlite3
 
-con = sqlite3.connect('users.db')
-cur = con.cursor()
 
+class Database:
+    def __init__(self, filename):
+        self.connection = sqlite3.connect(filename)
+        self.cursor = self.connection.cursor()
 
-def get_users() -> list:
-    queue = 'SELECT * FROM USERS'
-    res: list = cur.execute(queue).fetchall()
-    return res
+    def get_users(self) -> list:
+        queue = 'SELECT * FROM USERS'
+        res: list = self.cursor.execute(queue).fetchall()
+        return res
 
+    def get_user(self, uid):
+        queue = f'SELECT * FROM users WHERE tg_id={uid}'
+        res = self.cursor.execute(queue).fetchone()
+        return res
 
-def add_user(tg_id, snils):
-    queue = f'INSERT INTO users(tg_id, last_snils) VALUES({tg_id}, "{snils}")'
-    cur.execute(queue)
-    con.commit()
+    def add_user(self, uid, snils):
+        queue = f'INSERT INTO users(tg_id, last_snils) VALUES({uid}, "{snils}")'
+        self.cursor.execute(queue)
+        self.connection.commit()
 
-
-def change_last_snils(tg_id, snils):
-    queue = f'UPDATE users SET last_snils="{snils}" WHERE tg_id={tg_id}'
-    cur.execute(queue)
-    con.commit()
-
-
-def get_user(tg_id):
-    queue = f'SELECT * FROM users WHERE tg_id={tg_id}'
-    res = cur.execute(queue).fetchone()
-    return res
+    def change_last_snils(self, uid, snils):
+        queue = f'UPDATE users SET last_snils="{snils}" WHERE tg_id={uid}'
+        self.cursor.execute(queue)
+        self.connection.commit()
