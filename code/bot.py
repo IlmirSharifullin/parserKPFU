@@ -120,7 +120,7 @@ async def update_ratings() -> None:
 
 if __name__ == '__main__':
     # Рассылка
-    scheduler.add_job(send_rating, 'cron', hour='8,14,22')
+    scheduler.add_job(send_rating, 'cron', hour='10,14,20')
     # scheduler.add_job(send_rating, 'cron', minute='*') # Для проверки рассылки
 
     # Обновление рейтингов
