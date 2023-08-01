@@ -107,7 +107,7 @@ def get_for_snils(snils: str) -> list:
             person_info['place1'] = place1
             person_info['place2'] = place2
             person_info['original_place'] = originals_place
-            person_info['originals_place1'] = originals_place1
+            person_info['original_place1'] = originals_place1
             person_info['profile'] = f'{institute}.{profile}'
             person_info['count_places'] = profile_count_places
             ans.append(person_info)
@@ -122,7 +122,7 @@ def pretty_results(data: list):
         s += f'Профиль: {row["profile"]}\n'
         s += f'Место в списке: {row["index"]}\n'
         s += f'Место по оригиналам: {row["original_place"]}\n'
-        s += f'Место по оригиналам среди первых приоритетов: {row["original_place1"]}\n'
+        # s += f'Место по оригиналам среди первых приоритетов: {row["original_place1"]}\n'
         s += f'Место среди приоритетов `1`: {row["place1"]}\n'
         s += f'Место среди приоритетов `1` и `2`: {row["place2"]}\n'
         if row['count_places']:
